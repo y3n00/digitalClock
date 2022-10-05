@@ -1,5 +1,5 @@
-#include "digitalClock.hpp"
+#include "Clock.hpp"
 
 int main() {
-    DigitalClock::displayTime();
+    DigitalClock{}.displayTime();
 }
