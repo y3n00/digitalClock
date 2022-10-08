@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <ranges>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -32,7 +33,7 @@ struct Digits {
     };
 
    public:
-    inline std::string get(char digit, size_t row) {
+    inline const auto get(char digit, size_t row) {
         auto& _row = m_digits.at(row);
         std::string retVal;
 
@@ -59,16 +60,17 @@ struct Digits {
         }
         return retVal;
     }
+
+    const auto size() const { return m_digits.size(); }
 };
 
 class DigitalClock {
    private:
     Config config;
     Digits digits;
+    const Config::cfg_t* cfg = config.get();
 
     const auto Time(tm* now, size_t row) {
-        static auto cfg = config.get();
-
         std::string _sec = fmt::format("{:02}", now->tm_sec);
         std::string _min = fmt::format("{:02}", now->tm_min);
         std::string _hour = fmt::format("{:02}", now->tm_hour);
@@ -103,8 +105,6 @@ class DigitalClock {
     }
 
     const auto Date(tm* now, size_t row) {
-        static auto cfg = config.get();
-
         std::string _day = fmt::format("{:02}", now->tm_mday);
         std::string _month = fmt::format("{:02}", now->tm_mon + 1);
         std::string _year = fmt::format("{}", now->tm_year + 1900);
@@ -140,26 +140,25 @@ class DigitalClock {
    public:
     void displayTime() {
         while (true) {
-            static auto cfg = config.get();
-
             if (system("clear") != 0) {
                 ERROR("Output error\n");
                 return;
             }
 
-            auto t = std::time(nullptr);
-            auto now = std::localtime(&t);
+            time_t t = std::time(nullptr);
+            tm* now = std::localtime(&t);
 
             if (cfg->timeOnNewLine) {
-                for (size_t row = 0; row < 7; ++row) {
+                for (size_t row = 0; row < digits.size(); ++row)
                     std::cout << Date(now, row) << '\n';
-                }
+
                 std::cout << std::endl;
-                for (size_t row = 0; row < 7; ++row) {
+
+                for (size_t row = 0; row < digits.size(); ++row)
                     std::cout << Time(now, row) << '\n';
-                }
+
             } else {
-                for (size_t row = 0; row < 7; ++row) {
+                for (size_t row = 0; row < digits.size(); ++row) {
                     std::cout << Date(now, row);
                     std::cout << cfg->separator;
                     std::cout << Time(now, row);

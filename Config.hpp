@@ -13,7 +13,8 @@ class Config {
    private:
     static const std::string filename;
     json jConfig;
-    struct CFG {
+
+    struct {
         bool timeOnNewLine = false;
         bool timeEnabled = true, dateEnabled = true;
 
@@ -30,7 +31,7 @@ class Config {
     } cfg;
 
     void Helpers() {
-        json& jMain = jConfig["Helpers"];
+        json& jMain = jConfig["Info"];
 
         jMain["Colors"] = {
             "Red = 0",
@@ -41,20 +42,22 @@ class Config {
             "Blue = 5",
             "Purple = 6",
             "Pink = 7",
-            "Brightgree = 8",
+            "Brightgreen = 8",
             "Brightred = 9",
             "Black = 10",
             "Gray = 11",
             "Brightgray = 12",
             "White = 13",
             "Reset = 14",
-            "Default = 15"};
+            "Default = 15",
+        };
 
         jMain["Separators"] = {{"Date and time separators", {":", "-", " "}},
                                {"To change single line clock separator change this in settings", "singleLineSep"}};
     }
 
    public:
+    typedef decltype(cfg) cfg_t;
     Config() { std::filesystem::exists(filename) ? load() : init(); }
 
     Config(Config&&) = delete;
@@ -92,10 +95,11 @@ class Config {
         std::ifstream(filename) >> jConfig;
 
         json jSettings = jConfig["Settings"];
+        cfg.timeOnNewLine = jSettings["timeOnNewLine"].get<bool>();
+        cfg.separator = jSettings["singleLineSep"].get<std::string>();
 
         json& jTime = jSettings["Time"];
         json& jTimeColor = jTime["Colors"];
-        cfg.timeOnNewLine = jSettings["timeOnNewLine"].get<bool>();
         cfg.timeEnabled = jTime["Enabled"].get<bool>();
         cfg.timeFormat = jTime["Format"].get<std::string>();
         cfg.timeH = jTimeColor["Hours"].get<Colors>();
@@ -109,7 +113,6 @@ class Config {
         cfg.dateD = jDateColor["day"].get<Colors>();
         cfg.dateM = jDateColor["month"].get<Colors>();
         cfg.dateY = jDateColor["year"].get<Colors>();
-        cfg.separator = jSettings["singleLineSep"].get<std::string>();
     }
 
     const auto get() const { return &cfg; }
