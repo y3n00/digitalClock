@@ -1,120 +1,82 @@
-#pragma once
-#include <fmt/format.h>
-
+#include <array>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <string>
 
 #include "cliColors.hpp"
-
-using namespace cliColors;
 using namespace nlohmann;
+
+#define saveVal(val, name, to) to[#name] = val;
+#define loadVal(val, name, from) from.at(#name).get_to(val);
+struct values {
+    values(std::string_view format)
+        : Format{format} {}
+    bool Enabled = true;
+    std::string Format;
+    Colors colors[3] = {_default, _default, _default};
+
+    [[nodiscard]] json
+    save(json& j) const {
+        saveVal(Enabled, Enabled, j);
+        saveVal(Format, Format, j);
+        saveVal(colors[0], 1stVal, j);
+        saveVal(colors[1], 2ndVal, j);
+        saveVal(colors[2], 3rdVal, j);
+        return j;
+    }
+
+    void load(const json& j) {
+        loadVal(Enabled, Enabled, j);
+        loadVal(Format, Format, j);
+        loadVal(colors[0], 1stVal, j);
+        loadVal(colors[1], 2ndVal, j);
+        loadVal(colors[2], 3rdVal, j);
+    }
+};
 
 class Config {
    private:
     static const std::string filename;
-    json jConfig;
-
-    struct {
-        bool timeOnNewLine = false;
-        bool timeEnabled = true, dateEnabled = true;
-
-        Colors
-            timeH{_default},
-            timeM{_default},
-            timeS{_default},
-            dateD{_default},
-            dateM{_default},
-            dateY{_default};
-
-        std::string timeFormat = "H:M:S", dateFormat = "d-m-y";
-        std::string separator = "          ";
-    } cfg;
-
-    void Helpers() {
-        json& jMain = jConfig["Info"];
-
-        jMain["Colors"] = {
-            "Red = 0",
-            "Orange = 1",
-            "Yellow = 2",
-            "Green = 3",
-            "Cyan = 4",
-            "Blue = 5",
-            "Purple = 6",
-            "Pink = 7",
-            "Brightgreen = 8",
-            "Brightred = 9",
-            "Black = 10",
-            "Gray = 11",
-            "Brightgray = 12",
-            "White = 13",
-            "Reset = 14",
-            "Default = 15",
-        };
-
-        jMain["Separators"] = {{"Date and time separators", {":", "-", " "}},
-                               {"To change single line clock separator change this in settings", "singleLineSep"}};
-    }
+    static json mainJson;
 
    public:
-    typedef decltype(cfg) cfg_t;
-    Config() { std::filesystem::exists(filename) ? load() : init(); }
+    static size_t deltaTime;
+    static bool timeOnNewLine;
+    static std::string separator;
+    static values time, date;
 
-    Config(Config&&) = delete;
-    Config(const Config&) = delete;
-    Config& operator=(const Config&) = delete;
-
-    void init() {
-        Helpers();
-        json& jSettings = jConfig["Settings"];
-
-        jSettings["timeOnNewLine"] = cfg.timeOnNewLine;
-        jSettings["singleLineSep"] = cfg.separator;
-
-        json& jTime = jSettings["Time"];
-        json& jTimeColor = jTime["Colors"];
-        jTime["Enabled"] = cfg.timeEnabled;
-        jTime["Format"] = cfg.timeFormat;
-        jTimeColor["Hours"] = cfg.timeH;
-        jTimeColor["Minutes"] = cfg.timeM;
-        jTimeColor["Seconds"] = cfg.timeS;
-
-        json& jDate = jSettings["Date"];
-        json& jDateColor = jDate["Colors"];
-        jDate["Enabled"] = cfg.dateEnabled;
-        jDate["Format"] = cfg.dateFormat;
-        jDateColor["day"] = cfg.dateD;
-        jDateColor["month"] = cfg.dateM;
-        jDateColor["year"] = cfg.dateY;
-
-        std::ofstream(filename) << jConfig;
+    static void init() {
+        std::filesystem::exists(filename) ? load() : save();
     }
 
-    void load() {
-        jConfig.clear();
-        std::ifstream(filename) >> jConfig;
+    static void save() {
+        saveVal(deltaTime, deltaTime, mainJson);
+        saveVal(separator, separator, mainJson);
+        saveVal(timeOnNewLine, timeOnNewLine, mainJson);
 
-        json jSettings = jConfig["Settings"];
-        cfg.timeOnNewLine = jSettings["timeOnNewLine"].get<bool>();
-        cfg.separator = jSettings["singleLineSep"].get<std::string>();
-
-        json& jTime = jSettings["Time"];
-        json& jTimeColor = jTime["Colors"];
-        cfg.timeEnabled = jTime["Enabled"].get<bool>();
-        cfg.timeFormat = jTime["Format"].get<std::string>();
-        cfg.timeH = jTimeColor["Hours"].get<Colors>();
-        cfg.timeM = jTimeColor["Minutes"].get<Colors>();
-        cfg.timeS = jTimeColor["Seconds"].get<Colors>();
-
-        json& jDate = jSettings["Date"];
-        json& jDateColor = jDate["Colors"];
-        cfg.dateEnabled = jDate["Enabled"].get<bool>();
-        cfg.dateFormat = jDate["Format"].get<std::string>();
-        cfg.dateD = jDateColor["day"].get<Colors>();
-        cfg.dateM = jDateColor["month"].get<Colors>();
-        cfg.dateY = jDateColor["year"].get<Colors>();
+        time.save(mainJson["time"]);
+        date.save(mainJson["date"]);
+        std::ofstream(filename) << mainJson;
     }
 
-    const auto get() const { return &cfg; }
+    static void load() {
+        std::ifstream(filename) >> mainJson;
+        loadVal(deltaTime, deltaTime, mainJson);
+        loadVal(separator, separator, mainJson);
+        loadVal(timeOnNewLine, timeOnNewLine, mainJson);
+        time.load(mainJson["time"]);
+        date.load(mainJson["date"]);
+    }
 };
-const std::string Config::filename = "config.json";
+
+const std::string Config::filename = "digitalClock.json";
+json Config::mainJson;
+size_t Config::deltaTime = 50;
+bool Config::timeOnNewLine;
+std::string Config::separator;
+values Config::time("H:M:S");
+values Config::date("d m y");
+
+#undef saveVal
+#undef loadVal
+#undef loadValAs

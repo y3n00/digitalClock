@@ -1,10 +1,10 @@
+#pragma once
 #include <fmt/format-inl.h>
 
-#include <fstream>
 #include <iostream>
-#include <ranges>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -18,24 +18,22 @@
         break;
 
 #define ERROR(x) \
-    std::cerr << ColorTxt::Colorize(x, Colors::red);
+    std::cerr << cliColors::Colorize(x, Colors::red);
 
-struct Digits {
+class Digits {
    private:
-    const std::vector<std::vector<std::string>> m_digits = {
-        {" ┏━┓ ", "  ╻  ", " ┏━┓ ", " ┏━┓ ", " ╻ ╻ ", " ┏━┓ ", " ┏━┓ ", " ┏━┓ ", " ┏━┓ ", " ┏━┓ ", "   ", "   ", "   "},
-        {" ┃ ┃ ", "  ┃  ", "   ┃ ", "   ┃ ", " ┃ ┃ ", " ┃   ", " ┃   ", "   ┃ ", " ┃ ┃ ", " ┃ ┃ ", " ╻ ", "   ", "   "},
-        {" ┃ ┃ ", "  ┃  ", "   ┃ ", "   ┃ ", " ┃ ┃ ", " ┃   ", " ┃   ", "   ┃ ", " ┃ ┃ ", " ┃ ┃ ", "   ", "   ", "   "},
-        {" ┃ ┃ ", "  ┃  ", " ┏━┛ ", " ┣━┫ ", " ┗━┫ ", " ┗━┓ ", " ┣━┓ ", "   ┃ ", " ┣━┫ ", " ┗━┫ ", "   ", "   ", " ━ "},
-        {" ┃ ┃ ", "  ┃  ", " ┃   ", "   ┃ ", "   ┃ ", "   ┃ ", " ┃ ┃ ", "   ┃ ", " ┃ ┃ ", "   ┃ ", "   ", "   ", "   "},
-        {" ┃ ┃ ", "  ┃  ", " ┃   ", "   ┃ ", "   ┃ ", "   ┃ ", " ┃ ┃ ", "   ┃ ", " ┃ ┃ ", "   ┃ ", " ╹ ", "   ", "   "},
-        {" ┗━┛ ", "  ╹  ", " ┗━━ ", " ┗━┛ ", "   ╹ ", " ┗━┛ ", " ┗━┛ ", "   ╹ ", " ┗━┛ ", " ┗━┛ ", "   ", "   ", "   "},
-    };
+    static const std::vector<std::vector<std::string>> m_digits;
 
    public:
-    inline const auto get(char digit, size_t row) {
-        auto& _row = m_digits.at(row);
+    [[nodiscard]] static const auto
+    size() {
+        return m_digits.size();
+    }
+
+    [[nodiscard]] static const auto
+    get(char digit, size_t row) {
         std::string retVal;
+        auto& _row = m_digits.at(row);
 
         switch (digit) {
             _CASE(0);
@@ -60,76 +58,78 @@ struct Digits {
         }
         return retVal;
     }
-
-    const auto size() const { return m_digits.size(); }
 };
 
-class DigitalClock {
+const std::vector<std::vector<std::string>> Digits::m_digits = {
+    {" ┏━┓ ", "  ╻  ", " ┏━┓ ", " ┏━┓ ", " ╻ ╻ ", " ┏━┓ ", " ┏━┓ ", " ┏━┓ ", " ┏━┓ ", " ┏━┓ ", "   ", "   ", "   ", "  /"},
+    {" ┃ ┃ ", "  ┃  ", "   ┃ ", "   ┃ ", " ┃ ┃ ", " ┃   ", " ┃   ", "   ┃ ", " ┃ ┃ ", " ┃ ┃ ", " ╻ ", "   ", "   ", "  /"},
+    {" ┃ ┃ ", "  ┃  ", "   ┃ ", "   ┃ ", " ┃ ┃ ", " ┃   ", " ┃   ", "   ┃ ", " ┃ ┃ ", " ┃ ┃ ", "   ", "   ", "   ", " / "},
+    {" ┃ ┃ ", "  ┃  ", " ┏━┛ ", " ┣━┫ ", " ┗━┫ ", " ┗━┓ ", " ┣━┓ ", "   ┃ ", " ┣━┫ ", " ┗━┫ ", "   ", "   ", " ━ ", " / "},
+    {" ┃ ┃ ", "  ┃  ", " ┃   ", "   ┃ ", "   ┃ ", "   ┃ ", " ┃ ┃ ", "   ┃ ", " ┃ ┃ ", "   ┃ ", "   ", "   ", "   ", " / "},
+    {" ┃ ┃ ", "  ┃  ", " ┃   ", "   ┃ ", "   ┃ ", "   ┃ ", " ┃ ┃ ", "   ┃ ", " ┃ ┃ ", "   ┃ ", " ╹ ", "   ", "   ", "/  "},
+    {" ┗━┛ ", "  ╹  ", " ┗━━ ", " ┗━┛ ", "   ╹ ", " ┗━┛ ", " ┗━┛ ", "   ╹ ", " ┗━┛ ", " ┗━┛ ", "   ", "   ", "   ", "/  "},
+};
+
+class Clock {
    private:
-    Config config;
-    Digits digits;
-    const Config::cfg_t* cfg = config.get();
+    static Config cfg;
 
-    const auto Time(tm* now, size_t row) {
-        std::string _sec = fmt::format("{:02}", now->tm_sec);
-        std::string _min = fmt::format("{:02}", now->tm_min);
-        std::string _hour = fmt::format("{:02}", now->tm_hour);
-
+    [[nodiscard]] static const auto
+    Time(tm* now, size_t row) {
         std::string retVal;
-        if (cfg->timeEnabled)
-            for (auto c : cfg->timeFormat) {
+        if (cfg.time.Enabled) {
+            std::string _sec = fmt::format("{:02}", now->tm_sec);
+            std::string _min = fmt::format("{:02}", now->tm_min);
+            std::string _hour = fmt::format("{:02}", now->tm_hour);
+
+            for (auto c : cfg.time.Format) {
                 retVal += ' ';
                 switch (c) {
                     case 'H':
                         for (auto num : _hour)
-                            retVal += ColorTxt::Colorize(digits.get(num, row), cfg->timeH);
+                            retVal += cliColors::Colorize(Digits::get(num, row), cfg.time.colors[0]);
                         break;
-
                     case 'M':
                         for (auto num : _min)
-                            retVal += ColorTxt::Colorize(digits.get(num, row), cfg->timeM);
+                            retVal += cliColors::Colorize(Digits::get(num, row), cfg.time.colors[1]);
                         break;
-
                     case 'S':
                         for (auto num : _sec)
-                            retVal += ColorTxt::Colorize(digits.get(num, row), cfg->timeS);
+                            retVal += cliColors::Colorize(Digits::get(num, row), cfg.time.colors[2]);
                         break;
-
                     default:
-                        retVal += digits.get(c, row);
+                        retVal += Digits::get(c, row);
                         break;
                 }
             }
-
+        }
         return retVal;
     }
 
-    const auto Date(tm* now, size_t row) {
-        std::string _day = fmt::format("{:02}", now->tm_mday);
-        std::string _month = fmt::format("{:02}", now->tm_mon + 1);
-        std::string _year = fmt::format("{}", now->tm_year + 1900);
-
+    [[nodiscard]] static const auto
+    Date(tm* now, size_t row) {
         std::string retVal;
-        if (cfg->dateEnabled) {
-            for (auto c : cfg->dateFormat) {
+        if (cfg.date.Enabled) {
+            const std::string _day = fmt::format("{:02}", now->tm_mday);
+            const std::string _month = fmt::format("{:02}", now->tm_mon + 1);
+            const std::string _year = fmt::format("{}", now->tm_year + 1900);
+            for (auto c : cfg.date.Format) {
                 switch (c) {
                     case 'd':
                         for (auto num : _day)
-                            retVal += ColorTxt::Colorize(digits.get(num, row), cfg->dateD);
+                            retVal += cliColors::Colorize(Digits::get(num, row), cfg.date.colors[0]);
                         break;
-
                     case 'm':
                         for (auto num : _month)
-                            retVal += ColorTxt::Colorize(digits.get(num, row), cfg->dateM);
+                            retVal += cliColors::Colorize(Digits::get(num, row), cfg.date.colors[1]);
                         break;
-
                     case 'y':
                         for (auto num : _year)
-                            retVal += ColorTxt::Colorize(digits.get(num, row), cfg->dateY);
+                            retVal += cliColors::Colorize(Digits::get(num, row), cfg.date.colors[2]);
                         break;
 
                     default:
-                        retVal += digits.get(c, row);
+                        retVal += Digits::get(c, row);
                         break;
                 }
             }
@@ -138,7 +138,9 @@ class DigitalClock {
     }
 
    public:
-    void displayTime() {
+    static void run() {
+        Config::init();
+
         while (true) {
             if (system("clear") != 0) {
                 ERROR("Output error\n");
@@ -148,25 +150,25 @@ class DigitalClock {
             time_t t = std::time(nullptr);
             tm* now = std::localtime(&t);
 
-            if (cfg->timeOnNewLine) {
-                for (size_t row = 0; row < digits.size(); ++row)
+            if (cfg.timeOnNewLine) {
+                for (size_t row = 0; row < Digits::size(); ++row)
                     std::cout << Date(now, row) << '\n';
 
                 std::cout << std::endl;
 
-                for (size_t row = 0; row < digits.size(); ++row)
+                for (size_t row = 0; row < Digits::size(); ++row)
                     std::cout << Time(now, row) << '\n';
 
             } else {
-                for (size_t row = 0; row < digits.size(); ++row) {
+                for (size_t row = 0; row < Digits::size(); ++row) {
                     std::cout << Date(now, row);
-                    std::cout << cfg->separator;
+                    std::cout << cfg.separator;
                     std::cout << Time(now, row);
                     std::cout << '\n';
                 }
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(200));  // affects accuracy relative to the system clock
+            std::this_thread::sleep_for(std::chrono::milliseconds(cfg.deltaTime));  // accuracy relative to the system clock
         }
     }
 };
