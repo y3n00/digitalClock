@@ -6,31 +6,34 @@
 #include "cliColors.hpp"
 using namespace nlohmann;
 
-#define saveVal(val, name, to) to[#name] = val;
-#define loadVal(val, name, from) from.at(#name).get_to(val);
-struct values {
-    values(std::string_view format)
-        : Format{format} {}
+#define saveVal(val, to) to[#val] = val;
+#define loadVal(val, from) val = from[#val].get_to(val);
+#define saveColors(colors, to) \
+    to["Color_1"] = colors[0]; \
+    to["Color_2"] = colors[1]; \
+    to["Color_3"] = colors[2];
+#define loadColors(colors, from)       \
+    from["Color_1"].get_to(colors[0]); \
+    from["Color_2"].get_to(colors[1]); \
+    from["Color_3"].get_to(colors[2]);
+
+struct Values {
     bool Enabled = true;
     std::string Format;
-    Colors colors[3] = {_default, _default, _default};
 
-    [[nodiscard]] json
-    save(json& j) const {
-        saveVal(Enabled, Enabled, j);
-        saveVal(Format, Format, j);
-        saveVal(colors[0], 1stVal, j);
-        saveVal(colors[1], 2ndVal, j);
-        saveVal(colors[2], 3rdVal, j);
+    Colors colors[3]{_default, _default, _default};
+
+    json save(json& j) const {
+        saveVal(Enabled, j);
+        saveVal(Format, j);
+        saveColors(colors, j);
         return j;
     }
 
     void load(const json& j) {
-        loadVal(Enabled, Enabled, j);
-        loadVal(Format, Format, j);
-        loadVal(colors[0], 1stVal, j);
-        loadVal(colors[1], 2ndVal, j);
-        loadVal(colors[2], 3rdVal, j);
+        loadVal(Enabled, j);
+        loadVal(Format, j);
+        loadColors(colors, j);
     }
 };
 
@@ -43,17 +46,18 @@ class Config {
     static size_t deltaTime;
     static bool timeOnNewLine;
     static std::string separator;
-    static values time, date;
+    static Values time, date;
 
     static void init() {
         std::filesystem::exists(filename) ? load() : save();
     }
 
     static void save() {
-        saveVal(deltaTime, deltaTime, mainJson);
-        saveVal(separator, separator, mainJson);
-        saveVal(timeOnNewLine, timeOnNewLine, mainJson);
-
+        time.Format = "H:M:S";
+        date.Format = "d m y";
+        saveVal(deltaTime, mainJson);
+        saveVal(separator, mainJson);
+        saveVal(timeOnNewLine, mainJson);
         time.save(mainJson["time"]);
         date.save(mainJson["date"]);
         std::ofstream(filename) << mainJson;
@@ -61,22 +65,23 @@ class Config {
 
     static void load() {
         std::ifstream(filename) >> mainJson;
-        loadVal(deltaTime, deltaTime, mainJson);
-        loadVal(separator, separator, mainJson);
-        loadVal(timeOnNewLine, timeOnNewLine, mainJson);
+        loadVal(deltaTime, mainJson);
+        loadVal(separator, mainJson);
+        loadVal(timeOnNewLine, mainJson);
         time.load(mainJson["time"]);
         date.load(mainJson["date"]);
     }
 };
 
-const std::string Config::filename = "digitalClock.json";
-json Config::mainJson;
-size_t Config::deltaTime = 50;
-bool Config::timeOnNewLine;
-std::string Config::separator;
-values Config::time("H:M:S");
-values Config::date("d m y");
+const std::string Config::filename{"digitalClock.json"};
+json Config::mainJson{};
+size_t Config::deltaTime{50};
+bool Config::timeOnNewLine{true};
+std::string Config::separator{};
+Values Config::time;
+Values Config::date;
 
 #undef saveVal
+#undef saveColors
 #undef loadVal
-#undef loadValAs
+#undef loadColors

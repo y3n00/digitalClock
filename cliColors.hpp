@@ -42,11 +42,21 @@ class cliColors {
     }
 };
 
-const std::array<const char*, 16> cliColors::m_colors = {"\e[1;31m", "\e[1;33m",
-                                                         "\e[1;93m", "\e[1;32m",
-                                                         "\e[1;36m", "\e[1;34m",
-                                                         "\e[1;35m", "\e[1;95m",
-                                                         "\e[1;92m", "\e[1;91m",
-                                                         "\e[1;30m", "\e[1;90m",
-                                                         "\e[1;37m", "\e[1;97m",
-                                                         "\e[0m", ""};
+const std::array<const char*, 16> cliColors::m_colors = {
+    "\e[1;31m",  //    red = 0
+    "\e[1;33m",  //    orange
+    "\e[1;93m",  //    yellow
+    "\e[1;32m",  //    green
+    "\e[1;36m",  //    cyan
+    "\e[1;34m",  //    blue
+    "\e[1;35m",  //    purple
+    "\e[1;95m",  //    pink
+    "\e[1;92m",  //    brightgreen
+    "\e[1;91m",  //    brightred
+    "\e[1;30m",  //    black
+    "\e[1;90m",  //    gray
+    "\e[1;37m",  //    brightgray
+    "\e[1;97m",  //    white
+    "\e[0m",     //    reset
+    ""           //    default
+};
